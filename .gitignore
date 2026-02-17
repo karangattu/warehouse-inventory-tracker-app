@@ -38,4 +38,8 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# local database
+*.db
 next-env.d.ts
+/scripts
