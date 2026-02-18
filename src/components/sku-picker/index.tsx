@@ -22,17 +22,20 @@ export function SkuPicker({
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [colorFilter, setColorFilter] = useState<string | null>(null);
+  const [sizeFilter, setSizeFilter] = useState<string | null>(null);
   const [unitFilter, setUnitFilter] = useState<string | null>(null);
 
   // Extract unique filter values
   const filterOptions = useMemo(() => {
     const cats = new Map<string, string>();
     const cols = new Map<string, { name: string; hex: string | null }>();
+    const sizes = new Set<string>();
     const uts = new Map<string, string>();
 
     products.forEach((p) => {
       cats.set(p.categoryId, p.categoryName);
       cols.set(p.colorId, { name: p.colorName, hex: p.colorHex });
+      sizes.add(p.sizeLabel);
       uts.set(p.unitId, p.unitName);
     });
 
@@ -45,6 +48,12 @@ export function SkuPicker({
         name: data.name,
         hex: data.hex,
       })).sort((a, b) => a.name.localeCompare(b.name)),
+      sizes: Array.from(sizes).sort((a, b) => {
+        const numA = parseFloat(a);
+        const numB = parseFloat(b);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+      }),
       units: Array.from(uts, ([id, name]) => ({ id, name })).sort((a, b) =>
         a.name.localeCompare(b.name)
       ),
@@ -56,14 +65,16 @@ export function SkuPicker({
     let filtered = products;
     if (categoryFilter) filtered = filtered.filter((p) => p.categoryId === categoryFilter);
     if (colorFilter) filtered = filtered.filter((p) => p.colorId === colorFilter);
+    if (sizeFilter) filtered = filtered.filter((p) => p.sizeLabel === sizeFilter);
     if (unitFilter) filtered = filtered.filter((p) => p.unitId === unitFilter);
 
     return {
       categories: new Set(filtered.map((p) => p.categoryId)),
       colors: new Set(filtered.map((p) => p.colorId)),
+      sizes: new Set(filtered.map((p) => p.sizeLabel)),
       units: new Set(filtered.map((p) => p.unitId)),
     };
-  }, [products, categoryFilter, colorFilter, unitFilter]);
+  }, [products, categoryFilter, colorFilter, sizeFilter, unitFilter]);
 
   // Filter products
   const filteredProducts = useMemo(() => {
@@ -71,6 +82,7 @@ export function SkuPicker({
 
     if (categoryFilter) result = result.filter((p) => p.categoryId === categoryFilter);
     if (colorFilter) result = result.filter((p) => p.colorId === colorFilter);
+    if (sizeFilter) result = result.filter((p) => p.sizeLabel === sizeFilter);
     if (unitFilter) result = result.filter((p) => p.unitId === unitFilter);
 
     if (search.trim()) {
@@ -82,16 +94,17 @@ export function SkuPicker({
     }
 
     return result;
-  }, [products, search, categoryFilter, colorFilter, unitFilter]);
+  }, [products, search, categoryFilter, colorFilter, sizeFilter, unitFilter]);
 
   const clearAllFilters = () => {
     setCategoryFilter(null);
     setColorFilter(null);
+    setSizeFilter(null);
     setUnitFilter(null);
     setSearch("");
   };
 
-  const hasActiveFilters = categoryFilter || colorFilter || unitFilter || search;
+  const hasActiveFilters = categoryFilter || colorFilter || sizeFilter || unitFilter || search;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -158,6 +171,30 @@ export function SkuPicker({
                   />
                 )}
                 {color.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Unit chips */}
+        <div>
+          <p className="text-xs font-medium text-gray-700 mb-1.5">Size</p>
+          <div className="flex flex-wrap gap-1.5">
+            {filterOptions.sizes.map((size) => (
+              <button
+                key={size}
+                onClick={() =>
+                  setSizeFilter(sizeFilter === size ? null : size)
+                }
+                disabled={!sizeFilter && !availableFilters.sizes.has(size)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                  sizeFilter === size
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-800 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                )}
+              >
+                {size}
               </button>
             ))}
           </div>

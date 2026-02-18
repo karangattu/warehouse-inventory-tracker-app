@@ -5,7 +5,6 @@ import {
   createTransaction,
   getStockBalance,
   getProductById,
-  getDashboardStats,
 } from "@/lib/db/queries";
 import { revalidatePath } from "next/cache";
 import { LARGE_DISPATCH_ADMIN_FLAG_THRESHOLD } from "@/lib/constants";
@@ -168,15 +167,4 @@ export async function undoTransactionAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/browse");
-}
-
-// ─── Negative stock query (admin-only, used by live toasts) ──
-export async function getNegativeStockItemsAction(): Promise<
-  Array<{ id: string; name: string; balance: number }>
-> {
-  const session = await getSession();
-  if (!session || session.role !== "admin") return [];
-
-  const stats = await getDashboardStats();
-  return stats.negativeStockItems;
 }

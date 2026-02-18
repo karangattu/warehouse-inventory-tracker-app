@@ -18,8 +18,8 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   List,
-  OctagonAlert,
 } from "lucide-react";
+import { NegativeStockBanner } from "@/components/negative-stock-banner";
 import { undoTransactionAction } from "@/app/actions/stock";
 
 export default async function DashboardPage() {
@@ -41,23 +41,9 @@ export default async function DashboardPage() {
         </h1>
       </div>
 
-      {/* Alert banners */}
-      {isAdmin && (stats?.negativeStockCount ?? 0) > 0 && (
-        <div className="space-y-2">
-          {(stats?.negativeStockCount ?? 0) > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-              <OctagonAlert className="h-6 w-6 text-red-700" />
-              <div>
-                <p className="text-sm font-semibold text-red-800">
-                  {stats?.negativeStockCount} item{(stats?.negativeStockCount ?? 0) !== 1 ? "s" : ""} with negative stock
-                </p>
-                <p className="text-xs text-red-600 mt-0.5">
-                  Requires immediate attention
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Negative stock alert */}
+      {isAdmin && stats && stats.negativeStockItems.length > 0 && (
+        <NegativeStockBanner items={stats.negativeStockItems} />
       )}
 
       {/* Action buttons */}
