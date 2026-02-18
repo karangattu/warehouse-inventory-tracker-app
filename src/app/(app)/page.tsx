@@ -25,7 +25,7 @@ import { undoTransactionAction } from "@/app/actions/stock";
 export default async function DashboardPage() {
   const session = await getSession();
   const isAdmin = session?.role === "admin";
-  const stats = isAdmin ? await getDashboardStats() : null;
+  const stats = await getDashboardStats();
   const recentTx = isAdmin ? await getRecentTransactions(10) : [];
   const todayEntriesMadam = !isAdmin ? await getTodayTransactionsCountIST() : 0;
   const madamRecentTx =
@@ -42,7 +42,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Negative stock alert */}
-      {isAdmin && stats && stats.negativeStockItems.length > 0 && (
+      {stats.negativeStockItems.length > 0 && (
         <NegativeStockBanner items={stats.negativeStockItems} />
       )}
 
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {isAdmin && stats ? (
+      {isAdmin ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card>
             <p className="text-xs text-gray-700 font-medium">Total SKUs</p>

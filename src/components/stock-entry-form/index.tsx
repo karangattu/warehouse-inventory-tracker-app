@@ -35,7 +35,7 @@ export function StockEntryForm({
     message: string;
     type: "success" | "error" | "warning";
   } | null>(null);
-  const [idempotencyKey] = useState(() =>
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
     generateIdempotencyKey(user.id, "init")
   );
   const [step, setStep] = useState<"pick" | "quantity" | "confirm">("pick");
@@ -54,6 +54,7 @@ export function StockEntryForm({
         setQuantity("");
         setNote("");
         setShowNoteField(false);
+        setIdempotencyKey(generateIdempotencyKey(user.id, "reset"));
         setStep("pick");
       } else if (result?.error) {
         setToast({ message: result.error, type: "error" });
