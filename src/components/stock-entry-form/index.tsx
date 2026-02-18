@@ -70,7 +70,8 @@ export function StockEntryForm({
     direction === "in"
       ? currentStock + parsedQty
       : currentStock - parsedQty;
-  const isOverdraw = direction === "out" && parsedQty > currentStock;
+  const isDeficitStock = direction === "out" && currentStock <= 0;
+  const isOverdraw = direction === "out" && !isDeficitStock && parsedQty > currentStock;
   const isLargeDispatch =
     direction === "out" && parsedQty > LARGE_DISPATCH_WARNING_THRESHOLD;
 
@@ -167,6 +168,18 @@ export function StockEntryForm({
           {/* Quantity input */}
           <NumPad value={quantity} onChange={setQuantity} />
 
+          {/* Deficit stock warning (balance ≤ 0) */}
+          {isDeficitStock && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+              <p className="text-sm font-semibold text-red-800">
+                Stock in deficit ({currentStock})
+              </p>
+              <p className="text-xs text-red-600 mt-1">
+                Receive stock first before dispatching this item.
+              </p>
+            </div>
+          )}
+
           {/* Overdraw warning */}
           {isOverdraw && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
@@ -216,7 +229,7 @@ export function StockEntryForm({
             className="w-full"
             variant={direction === "in" ? "success" : "danger"}
             onClick={handleProceedToConfirm}
-            disabled={parsedQty <= 0 || isOverdraw}
+            disabled={parsedQty <= 0 || isOverdraw || isDeficitStock}
           >
             Continue
           </Button>

@@ -5,6 +5,7 @@ import {
   createTransaction,
   getStockBalance,
   getProductById,
+  getDashboardStats,
 } from "@/lib/db/queries";
 import { revalidatePath } from "next/cache";
 import { LARGE_DISPATCH_ADMIN_FLAG_THRESHOLD } from "@/lib/constants";
@@ -42,9 +43,14 @@ export async function stockEntryAction(
     return { error: "Product not found or inactive." };
   }
 
-  // For OUT: check stock
+  // For OUT: check stock — also blocks dispatching when balance is already negative
   if (direction === "out") {
     const currentBalance = await getStockBalance(productId);
+    if (currentBalance <= 0) {
+      return {
+        error: `This item's stock is currently in deficit (${currentBalance}). Please receive stock before dispatching.`,
+      };
+    }
     if (quantity > currentBalance) {
       return {
         error: `Cannot dispatch ${quantity} — only ${currentBalance} in stock. Enter ${currentBalance} or less.`,
@@ -162,4 +168,15 @@ export async function undoTransactionAction(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/browse");
+}
+
+// ─── Negative stock query (admin-only, used by live toasts) ──
+export async function getNegativeStockItemsAction(): Promise<
+  Array<{ id: string; name: string; balance: number }>
+> {
+  const session = await getSession();
+  if (!session || session.role !== "admin") return [];
+
+  const stats = await getDashboardStats();
+  return stats.negativeStockItems;
 }
