@@ -91,7 +91,7 @@ export default async function ReportsPage() {
               <p className="text-xl font-bold">
                 {formatQuantity(row.total ?? 0)}
               </p>
-              <p className="text-xs text-gray-400">{row.count} entries</p>
+              <p className="text-xs text-gray-500">{row.count} entries</p>
             </div>
           ))}
           {todayTx.length === 0 && (

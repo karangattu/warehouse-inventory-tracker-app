@@ -30,17 +30,28 @@ export function ProductsClient({
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    message: string;
+    existingSizeLabel: string;
+  } | null>(null);
 
   const handleCreateAction = (
-    prev: { error?: string; success?: string } | null,
+    prev: { error?: string; success?: string; duplicate?: boolean; existingSizeLabel?: string } | null,
     formData: FormData
   ) => {
     return createProductAction(prev, formData).then((result) => {
       if (result?.success) {
         setToast({ message: result.success, type: "success" });
         setShowCreateModal(false);
+        setDuplicateWarning(null);
+      } else if (result?.duplicate) {
+        setDuplicateWarning({
+          message: result.error || "Similar product exists.",
+          existingSizeLabel: result.existingSizeLabel || "",
+        });
       } else if (result?.error) {
         setToast({ message: result.error, type: "error" });
+        setDuplicateWarning(null);
       }
       return result;
     });
@@ -88,13 +99,13 @@ export function ProductsClient({
                 <p className="text-sm font-medium text-gray-900">
                   {p.categoryName} — {p.colorName} {p.sizeLabel} ({p.unitName})
                 </p>
-                <p className="text-xs text-gray-400 font-mono">
+                <p className="text-xs text-gray-500 font-mono">
                   {p.skuCode || "No SKU"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {p.isActive === 0 && (
-                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                     Inactive
                   </span>
                 )}
@@ -114,10 +125,10 @@ export function ProductsClient({
       {/* Create modal */}
       <Modal
         open={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => { setShowCreateModal(false); setDuplicateWarning(null); }}
         title="Add New Product"
       >
-        <form action={createFormAction} className="space-y-3">
+        <form action={createFormAction} className="space-y-3" id="create-product-form">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Category
@@ -126,6 +137,7 @@ export function ProductsClient({
               name="categoryId"
               required
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+              onChange={() => setDuplicateWarning(null)}
             >
               <option value="">Select...</option>
               {categories.map((c) => (
@@ -143,6 +155,7 @@ export function ProductsClient({
               name="colorId"
               required
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+              onChange={() => setDuplicateWarning(null)}
             >
               <option value="">Select...</option>
               {colors.map((c) => (
@@ -152,7 +165,18 @@ export function ProductsClient({
               ))}
             </select>
           </div>
-          <Input name="sizeLabel" label="Size Label" required />
+          <div>
+            <Input
+              name="sizeLabel"
+              label="Size Label"
+              required
+              placeholder="e.g. 25mm, 50mm"
+              onChange={() => setDuplicateWarning(null)}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Spaces between numbers and units (e.g. &quot;9 mm&quot;) will be auto-normalized to &quot;9mm&quot;.
+            </p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Unit
@@ -161,6 +185,7 @@ export function ProductsClient({
               name="unitId"
               required
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+              onChange={() => setDuplicateWarning(null)}
             >
               <option value="">Select...</option>
               {units.map((u) => (
@@ -170,9 +195,45 @@ export function ProductsClient({
               ))}
             </select>
           </div>
-          <Button type="submit" disabled={isCreating} className="w-full">
-            {isCreating ? "Creating..." : "Create Product"}
-          </Button>
+
+          {/* Duplicate warning */}
+          {duplicateWarning && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+              <p className="text-sm font-medium text-amber-800">⚠ Possible duplicate</p>
+              <p className="text-xs text-amber-700 mt-1">
+                A product with size &quot;{duplicateWarning.existingSizeLabel}&quot; already exists for this category/color/unit combination.
+              </p>
+              <Button
+                type="submit"
+                variant="ghost"
+                size="sm"
+                className="mt-2 text-amber-800 border border-amber-400 hover:bg-amber-100"
+                disabled={isCreating}
+                onClick={() => {
+                  // Add hidden input to skip duplicate check
+                  const form = document.getElementById("create-product-form") as HTMLFormElement;
+                  if (form) {
+                    let input = form.querySelector<HTMLInputElement>('input[name="skipDuplicateCheck"]');
+                    if (!input) {
+                      input = document.createElement("input");
+                      input.type = "hidden";
+                      input.name = "skipDuplicateCheck";
+                      form.appendChild(input);
+                    }
+                    input.value = "true";
+                  }
+                }}
+              >
+                {isCreating ? "Creating..." : "Create anyway"}
+              </Button>
+            </div>
+          )}
+
+          {!duplicateWarning && (
+            <Button type="submit" disabled={isCreating} className="w-full">
+              {isCreating ? "Creating..." : "Create Product"}
+            </Button>
+          )}
         </form>
       </Modal>
 

@@ -51,6 +51,27 @@ export function formatQuantity(qty: number): string {
   return Number.isInteger(qty) ? qty.toString() : qty.toFixed(2);
 }
 
+/**
+ * Normalize a size label to prevent near-duplicate entries.
+ * - Trims whitespace
+ * - Collapses multiple spaces to one
+ * - Removes spaces between a number and a unit suffix (e.g. "9 mm" → "9mm", "25 mm" → "25mm")
+ * - Lowercases unit suffixes for consistent comparison
+ */
+export function normalizeSizeLabel(raw: string): string {
+  let s = raw.trim().replace(/\s+/g, " ");
+  // Remove space between number and unit (e.g. "9 mm" → "9mm", "1.5 m" → "1.5m")
+  s = s.replace(/(\d)\s+(mm|cm|m|in|ft|kg|g|lb|oz)\b/gi, "$1$2");
+  return s;
+}
+
+/**
+ * Check if two size labels are effectively the same after normalization.
+ */
+export function sizeLabelMatches(a: string, b: string): boolean {
+  return normalizeSizeLabel(a).toLowerCase() === normalizeSizeLabel(b).toLowerCase();
+}
+
 export function formatUserDisplayName(name: string): string {
   return name.trim().toLowerCase() === "operator" ? "Madam" : name;
 }

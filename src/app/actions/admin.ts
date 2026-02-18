@@ -9,10 +9,10 @@ import {
 } from "@/lib/db/queries";
 import { db } from "@/lib/db/client";
 import { products, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { ulid } from "ulid";
 import { hashPin } from "@/lib/auth";
-import { generateSkuCode } from "@/lib/utils";
+import { generateSkuCode, normalizeSizeLabel, sizeLabelMatches } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 
 export async function adjustStockAction(
@@ -67,14 +67,43 @@ export async function createProductAction(
 
   const categoryId = formData.get("categoryId") as string;
   const colorId = formData.get("colorId") as string;
-  const sizeLabel = formData.get("sizeLabel") as string;
+  const rawSizeLabel = formData.get("sizeLabel") as string;
   const unitId = formData.get("unitId") as string;
+  const skipDuplicateCheck = formData.get("skipDuplicateCheck") === "true";
 
-  if (!categoryId || !colorId || !sizeLabel || !unitId) {
+  if (!categoryId || !colorId || !rawSizeLabel || !unitId) {
     return { error: "All fields are required." };
   }
 
+  // Normalize the size label to prevent near-duplicates like "9mm" vs "9 mm"
+  const sizeLabel = normalizeSizeLabel(rawSizeLabel);
+
   try {
+    // Check for near-duplicate products (same category, color, unit but similar size label)
+    if (!skipDuplicateCheck) {
+      const existingProducts = await db
+        .select({ id: products.id, sizeLabel: products.sizeLabel })
+        .from(products)
+        .where(
+          and(
+            eq(products.categoryId, categoryId),
+            eq(products.colorId, colorId),
+            eq(products.unitId, unitId)
+          )
+        );
+
+      const similarProduct = existingProducts.find(
+        (p) => sizeLabelMatches(p.sizeLabel, sizeLabel) && p.sizeLabel !== sizeLabel
+      );
+
+      if (similarProduct) {
+        return {
+          error: `A similar product already exists with size "${similarProduct.sizeLabel}". Your entry "${sizeLabel}" looks like a duplicate. If this is intentional, confirm to proceed.`,
+          duplicate: true,
+          existingSizeLabel: similarProduct.sizeLabel,
+        };
+      }
+    }
     const cats = await getAllCategories();
     const cols = await getAllColors();
     const uts = await getAllUnits();
@@ -94,7 +123,7 @@ export async function createProductAction(
       id: ulid(),
       categoryId,
       colorId,
-      sizeLabel: sizeLabel.trim(),
+      sizeLabel,
       unitId,
       skuCode,
       isActive: 1,
@@ -135,7 +164,7 @@ export async function updateProductAction(
 
   try {
     const updates: Record<string, unknown> = {};
-    if (sizeLabel) updates.sizeLabel = sizeLabel.trim();
+    if (sizeLabel) updates.sizeLabel = normalizeSizeLabel(sizeLabel);
     if (isActiveStr !== null) updates.isActive = isActiveStr === "1" ? 1 : 0;
 
     await db

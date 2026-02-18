@@ -51,7 +51,7 @@ export function TransactionList({
               {formatUserDisplayName(tx.userName)} · {tx.createdAt ? formatDate(tx.createdAt) : "—"}
             </p>
             {tx.note && (
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{tx.note}</p>
+              <p className="text-xs text-gray-500 mt-0.5 truncate">{tx.note}</p>
             )}
           </div>
 

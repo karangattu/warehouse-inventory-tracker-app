@@ -48,7 +48,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </span>
             </div>
             {product.skuCode && (
-              <p className="text-sm text-gray-400 font-mono mt-1">
+              <p className="text-sm text-gray-500 font-mono mt-1">
                 {product.skuCode}
               </p>
             )}
@@ -113,7 +113,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       {formatQuantity(tx.balanceAfter)}
                     </td>
                     <td className="py-2 px-2 text-gray-600">{formatUserDisplayName(tx.userName)}</td>
-                    <td className="py-2 px-2 text-gray-400 max-w-[200px] truncate">
+                    <td className="py-2 px-2 text-gray-500 max-w-[200px] truncate">
                       {tx.note || "—"}
                     </td>
                   </tr>
