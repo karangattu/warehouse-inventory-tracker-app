@@ -55,13 +55,12 @@ export function formatQuantity(qty: number): string {
  * Normalize a size label to prevent near-duplicate entries.
  * - Trims whitespace
  * - Collapses multiple spaces to one
- * - Removes spaces between a number and a unit suffix (e.g. "9 mm" → "9mm", "25 mm" → "25mm")
- * - Lowercases unit suffixes for consistent comparison
+ * - Ensures a space between a number and a unit suffix (e.g. "9mm" → "9 mm", "25mm" → "25 mm")
  */
 export function normalizeSizeLabel(raw: string): string {
   let s = raw.trim().replace(/\s+/g, " ");
-  // Remove space between number and unit (e.g. "9 mm" → "9mm", "1.5 m" → "1.5m")
-  s = s.replace(/(\d)\s+(mm|cm|m|in|ft|kg|g|lb|oz)\b/gi, "$1$2");
+  // Ensure a space between number and unit (e.g. "9mm" → "9 mm", "1.5m" → "1.5 m")
+  s = s.replace(/(\d)(mm|cm|m|in|ft|kg|g|lb|oz)\b/gi, "$1 $2");
   return s;
 }
 

@@ -170,11 +170,11 @@ export function ProductsClient({
               name="sizeLabel"
               label="Size Label"
               required
-              placeholder="e.g. 25mm, 50mm"
+              placeholder="e.g. 25 mm, 50 mm"
               onChange={() => setDuplicateWarning(null)}
             />
             <p className="mt-1 text-xs text-gray-500">
-              Spaces between numbers and units (e.g. &quot;9 mm&quot;) will be auto-normalized to &quot;9mm&quot;.
+              Numbers and units will be auto-spaced (e.g. &quot;9mm&quot; → &quot;9 mm&quot;).
             </p>
           </div>
           <div>
