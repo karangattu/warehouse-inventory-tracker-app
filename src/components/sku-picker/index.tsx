@@ -60,19 +60,37 @@ export function SkuPicker({
     };
   }, [products]);
 
-  // Available filter options based on current selections
+  // Available options per facet based on other active filters (excluding self)
   const availableFilters = useMemo(() => {
-    let filtered = products;
-    if (categoryFilter) filtered = filtered.filter((p) => p.categoryId === categoryFilter);
-    if (colorFilter) filtered = filtered.filter((p) => p.colorId === colorFilter);
-    if (sizeFilter) filtered = filtered.filter((p) => p.sizeLabel === sizeFilter);
-    if (unitFilter) filtered = filtered.filter((p) => p.unitId === unitFilter);
+    const applyFilters = (exclude: "category" | "color" | "size" | "unit") => {
+      let filtered = products;
+
+      if (exclude !== "category" && categoryFilter) {
+        filtered = filtered.filter((p) => p.categoryId === categoryFilter);
+      }
+      if (exclude !== "color" && colorFilter) {
+        filtered = filtered.filter((p) => p.colorId === colorFilter);
+      }
+      if (exclude !== "size" && sizeFilter) {
+        filtered = filtered.filter((p) => p.sizeLabel === sizeFilter);
+      }
+      if (exclude !== "unit" && unitFilter) {
+        filtered = filtered.filter((p) => p.unitId === unitFilter);
+      }
+
+      return filtered;
+    };
+
+    const categoryFiltered = applyFilters("category");
+    const colorFiltered = applyFilters("color");
+    const sizeFiltered = applyFilters("size");
+    const unitFiltered = applyFilters("unit");
 
     return {
-      categories: new Set(filtered.map((p) => p.categoryId)),
-      colors: new Set(filtered.map((p) => p.colorId)),
-      sizes: new Set(filtered.map((p) => p.sizeLabel)),
-      units: new Set(filtered.map((p) => p.unitId)),
+      categories: new Set(categoryFiltered.map((p) => p.categoryId)),
+      colors: new Set(colorFiltered.map((p) => p.colorId)),
+      sizes: new Set(sizeFiltered.map((p) => p.sizeLabel)),
+      units: new Set(unitFiltered.map((p) => p.unitId)),
     };
   }, [products, categoryFilter, colorFilter, sizeFilter, unitFilter]);
 
@@ -132,7 +150,7 @@ export function SkuPicker({
                 onClick={() =>
                   setCategoryFilter(categoryFilter === cat.id ? null : cat.id)
                 }
-                disabled={!categoryFilter && !availableFilters.categories.has(cat.id)}
+                disabled={cat.id !== categoryFilter && !availableFilters.categories.has(cat.id)}
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
                   categoryFilter === cat.id
@@ -156,7 +174,7 @@ export function SkuPicker({
                 onClick={() =>
                   setColorFilter(colorFilter === color.id ? null : color.id)
                 }
-                disabled={!colorFilter && !availableFilters.colors.has(color.id)}
+                disabled={color.id !== colorFilter && !availableFilters.colors.has(color.id)}
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5",
                   colorFilter === color.id
@@ -186,7 +204,7 @@ export function SkuPicker({
                 onClick={() =>
                   setSizeFilter(sizeFilter === size ? null : size)
                 }
-                disabled={!sizeFilter && !availableFilters.sizes.has(size)}
+                disabled={size !== sizeFilter && !availableFilters.sizes.has(size)}
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
                   sizeFilter === size
@@ -210,7 +228,7 @@ export function SkuPicker({
                 onClick={() =>
                   setUnitFilter(unitFilter === unit.id ? null : unit.id)
                 }
-                disabled={!unitFilter && !availableFilters.units.has(unit.id)}
+                disabled={unit.id !== unitFilter && !availableFilters.units.has(unit.id)}
                 className={cn(
                   "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
                   unitFilter === unit.id

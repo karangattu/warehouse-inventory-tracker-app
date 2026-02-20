@@ -79,19 +79,31 @@ export async function createProductAction(
   const sizeLabel = normalizeSizeLabel(rawSizeLabel);
 
   try {
-    // Check for near-duplicate products (same category, color, unit but similar size label)
-    if (!skipDuplicateCheck) {
-      const existingProducts = await db
-        .select({ id: products.id, sizeLabel: products.sizeLabel })
-        .from(products)
-        .where(
-          and(
-            eq(products.categoryId, categoryId),
-            eq(products.colorId, colorId),
-            eq(products.unitId, unitId)
-          )
-        );
+    // Check for exact and near-duplicate products (same category, color, unit)
+    const existingProducts = await db
+      .select({ id: products.id, sizeLabel: products.sizeLabel, skuCode: products.skuCode })
+      .from(products)
+      .where(
+        and(
+          eq(products.categoryId, categoryId),
+          eq(products.colorId, colorId),
+          eq(products.unitId, unitId)
+        )
+      );
 
+    // Block exact duplicates (same normalized size label)
+    const exactDuplicate = existingProducts.find(
+      (p) => sizeLabelMatches(p.sizeLabel, sizeLabel)
+    );
+
+    if (exactDuplicate) {
+      return {
+        error: `This product variant already exists (size "${exactDuplicate.sizeLabel}").`,
+      };
+    }
+
+    // Warn about near-duplicates (similar but not identical size labels)
+    if (!skipDuplicateCheck) {
       const similarProduct = existingProducts.find(
         (p) => sizeLabelMatches(p.sizeLabel, sizeLabel) && p.sizeLabel !== sizeLabel
       );
@@ -104,6 +116,7 @@ export async function createProductAction(
         };
       }
     }
+
     const cats = await getAllCategories();
     const cols = await getAllColors();
     const uts = await getAllUnits();
@@ -112,12 +125,34 @@ export async function createProductAction(
     const col = cols.find((c) => c.id === colorId);
     const ut = uts.find((u) => u.id === unitId);
 
-    const skuCode = generateSkuCode(
+    let skuCode = generateSkuCode(
       cat?.name || "",
       col?.name || "",
       sizeLabel,
       ut?.name || ""
     );
+
+    // Handle SKU collision: if another product already has this SKU, append a suffix
+    const allSkus = await db
+      .select({ skuCode: products.skuCode })
+      .from(products)
+      .where(eq(products.skuCode, skuCode));
+
+    if (allSkus.length > 0) {
+      let suffix = 2;
+      while (true) {
+        const candidate = `${skuCode}-${suffix}`;
+        const conflict = await db
+          .select({ skuCode: products.skuCode })
+          .from(products)
+          .where(eq(products.skuCode, candidate));
+        if (conflict.length === 0) {
+          skuCode = candidate;
+          break;
+        }
+        suffix++;
+      }
+    }
 
     await db.insert(products).values({
       id: ulid(),
@@ -135,13 +170,15 @@ export async function createProductAction(
 
     return { success: `Product created: ${skuCode}` };
   } catch (err) {
-    if (
-      err instanceof Error &&
-      err.message.includes("UNIQUE constraint failed")
-    ) {
+    console.error("createProductAction error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("UNIQUE constraint failed")) {
       return { error: "This product variant already exists." };
     }
-    return { error: err instanceof Error ? err.message : "An error occurred." };
+    if (msg.includes("FOREIGN KEY constraint failed")) {
+      return { error: "Invalid category, color, or unit selection. Please refresh and try again." };
+    }
+    return { error: "Failed to create product. Please try again." };
   }
 }
 
