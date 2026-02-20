@@ -24,6 +24,7 @@ export function ProductsClient({
   units,
 }: ProductsClientProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isNewCategory, setIsNewCategory] = useState(false);
   const [editingProduct, setEditingProduct] =
     useState<ProductWithDetails | null>(null);
   const [toast, setToast] = useState<{
@@ -44,6 +45,7 @@ export function ProductsClient({
         setToast({ message: result.success, type: "success" });
         setShowCreateModal(false);
         setDuplicateWarning(null);
+        setIsNewCategory(false);
       } else if (result?.duplicate) {
         setDuplicateWarning({
           message: result.error || "Similar product exists.",
@@ -125,7 +127,7 @@ export function ProductsClient({
       {/* Create modal */}
       <Modal
         open={showCreateModal}
-        onClose={() => { setShowCreateModal(false); setDuplicateWarning(null); }}
+        onClose={() => { setShowCreateModal(false); setDuplicateWarning(null); setIsNewCategory(false); }}
         title="Add New Product"
       >
         <form action={createFormAction} className="space-y-3" id="create-product-form">
@@ -137,7 +139,10 @@ export function ProductsClient({
               name="categoryId"
               required
               className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
-              onChange={() => setDuplicateWarning(null)}
+              onChange={(e) => {
+                setDuplicateWarning(null);
+                setIsNewCategory(e.target.value === "__new__");
+              }}
             >
               <option value="">Select...</option>
               {categories.map((c) => (
@@ -145,7 +150,16 @@ export function ProductsClient({
                   {c.name}
                 </option>
               ))}
+              <option value="__new__">+ Add new category...</option>
             </select>
+            {isNewCategory && (
+              <Input
+                name="newCategoryName"
+                placeholder="Enter new category name"
+                required
+                className="mt-2"
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -384,6 +384,16 @@ export async function getAllCategories() {
   return db.select().from(categories).orderBy(categories.name);
 }
 
+export async function createCategory(name: string) {
+  const id = ulid();
+  await db.insert(categories).values({
+    id,
+    name: name.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  return { id, name: name.trim() };
+}
+
 export async function getAllColors() {
   return db.select().from(colors).orderBy(colors.name);
 }

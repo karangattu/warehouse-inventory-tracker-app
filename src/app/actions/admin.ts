@@ -2,13 +2,14 @@
 
 import { getSession } from "@/lib/auth";
 import {
+  createCategory,
   createStockAdjustment,
   getAllCategories,
   getAllColors,
   getAllUnits,
 } from "@/lib/db/queries";
 import { db } from "@/lib/db/client";
-import { products, users } from "@/lib/db/schema";
+import { categories, products, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { ulid } from "ulid";
 import { hashPin } from "@/lib/auth";
@@ -65,11 +66,33 @@ export async function createProductAction(
     return { error: "Admin access required." };
   }
 
-  const categoryId = formData.get("categoryId") as string;
+  let categoryId = formData.get("categoryId") as string;
+  const newCategoryName = formData.get("newCategoryName") as string;
   const colorId = formData.get("colorId") as string;
   const rawSizeLabel = formData.get("sizeLabel") as string;
   const unitId = formData.get("unitId") as string;
   const skipDuplicateCheck = formData.get("skipDuplicateCheck") === "true";
+
+  // Handle new category creation
+  if (categoryId === "__new__") {
+    if (!newCategoryName?.trim()) {
+      return { error: "New category name is required." };
+    }
+    // Check if category with this name already exists (case-insensitive)
+    const existingCats = await getAllCategories();
+    const existing = existingCats.find(
+      (c) => c.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+    );
+    if (existing) {
+      return { error: `Category "${existing.name}" already exists. Please select it from the dropdown.` };
+    }
+    try {
+      const newCat = await createCategory(newCategoryName);
+      categoryId = newCat.id;
+    } catch (err) {
+      return { error: "Failed to create new category." };
+    }
+  }
 
   if (!categoryId || !colorId || !rawSizeLabel || !unitId) {
     return { error: "All fields are required." };
