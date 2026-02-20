@@ -9,8 +9,8 @@ import {
   getAllUnits,
 } from "@/lib/db/queries";
 import { db } from "@/lib/db/client";
-import { categories, products, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { categories, colors, products, transactions, units, users } from "@/lib/db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { ulid } from "ulid";
 import { hashPin } from "@/lib/auth";
 import { generateSkuCode, normalizeSizeLabel, sizeLabelMatches } from "@/lib/utils";
@@ -336,4 +336,62 @@ export async function resetPinAction(
   } catch (err) {
     return { error: err instanceof Error ? err.message : "An error occurred." };
   }
+}
+
+// ─── Date-based Transaction Report ───────────────────────────
+
+export async function getTransactionsForDate(dateStr: string) {
+  const session = await getSession();
+  if (!session || session.role !== "admin") {
+    return { error: "Admin access required.", summary: [], transactions: [] };
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { error: "Invalid date format.", summary: [], transactions: [] };
+  }
+
+  // Summary: total in/out for the selected IST day
+  const summary = await db
+    .select({
+      direction: transactions.direction,
+      total: sql<number>`sum(${transactions.quantity})`,
+      count: sql<number>`count(*)`,
+    })
+    .from(transactions)
+    .where(
+      sql`date(datetime(${transactions.createdAt}, '+5 hours', '+30 minutes')) = ${dateStr}`
+    )
+    .groupBy(transactions.direction);
+
+  // Detailed transactions for that IST day
+  const txList = await db
+    .select({
+      id: transactions.id,
+      productId: transactions.productId,
+      direction: transactions.direction,
+      quantity: transactions.quantity,
+      balanceAfter: transactions.balanceAfter,
+      note: transactions.note,
+      enteredBy: transactions.enteredBy,
+      createdAt: transactions.createdAt,
+      categoryName: categories.name,
+      colorName: colors.name,
+      sizeLabel: products.sizeLabel,
+      unitName: units.name,
+      skuCode: products.skuCode,
+      userName: users.name,
+    })
+    .from(transactions)
+    .innerJoin(products, eq(transactions.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .innerJoin(colors, eq(products.colorId, colors.id))
+    .innerJoin(units, eq(products.unitId, units.id))
+    .innerJoin(users, eq(transactions.enteredBy, users.id))
+    .where(
+      sql`date(datetime(${transactions.createdAt}, '+5 hours', '+30 minutes')) = ${dateStr}`
+    )
+    .orderBy(desc(transactions.createdAt));
+
+  return { error: null, summary, transactions: txList };
 }

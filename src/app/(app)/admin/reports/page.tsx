@@ -4,24 +4,12 @@ import { eq, desc, sql, and, lt } from "drizzle-orm";
 import { Card } from "@/components/ui/card";
 import { formatDate, formatQuantity, formatUserDisplayName } from "@/lib/utils";
 import { getProductsWithStock } from "@/lib/db/queries";
+import { ReportsDatePicker } from "./reports-date-picker";
 
 export default async function ReportsPage() {
   // Negative stock report
   const allProducts = await getProductsWithStock();
   const negativeProducts = allProducts.filter((p) => p.stockBalance < 0);
-
-  // Transactions today
-  const todayTx = await db
-    .select({
-      direction: transactions.direction,
-      total: sql<number>`sum(${transactions.quantity})`,
-      count: sql<number>`count(*)`,
-    })
-    .from(transactions)
-    .where(
-      sql`date(datetime(${transactions.createdAt}, '+5 hours', '+30 minutes')) = date('now', '+5 hours', '+30 minutes')`
-    )
-    .groupBy(transactions.direction);
 
   // Large dispatches (> 20)
   const largeTx = await db
@@ -72,35 +60,8 @@ export default async function ReportsPage() {
     <div className="space-y-6 mt-4">
       <h2 className="text-base font-semibold text-gray-900">Reports</h2>
 
-      {/* Today's movement */}
-      <Card>
-        <h3 className="font-semibold text-gray-900 mb-3">
-          Today&apos;s Movement (IST)
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          {todayTx.map((row) => (
-            <div
-              key={row.direction}
-              className={`p-3 rounded-lg ${
-                row.direction === "in" ? "bg-green-50" : "bg-red-50"
-              }`}
-            >
-              <p className="text-xs text-gray-500">
-                {row.direction === "in" ? "Stock In" : "Stock Out"}
-              </p>
-              <p className="text-xl font-bold">
-                {formatQuantity(row.total ?? 0)}
-              </p>
-              <p className="text-xs text-gray-500">{row.count} entries</p>
-            </div>
-          ))}
-          {todayTx.length === 0 && (
-            <p className="text-sm text-gray-500 col-span-2">
-              No transactions today.
-            </p>
-          )}
-        </div>
-      </Card>
+      {/* Date-based transaction viewer */}
+      <ReportsDatePicker />
 
       {/* Negative stock */}
       <Card>
